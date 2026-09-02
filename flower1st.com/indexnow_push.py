@@ -29,8 +29,9 @@ def make_key():
 
 def check_key(domain, key):
     url = f"https://{domain}/{key}.txt"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; indexnow-push/1.0)"})
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:
             body = resp.read().decode("utf-8").strip()
             if resp.status == 200 and body == key:
                 print(f"[정상] {url}")
@@ -88,7 +89,8 @@ def send(domain, key, urls, dry_run, limit):
     }
     req = urllib.request.Request(
         API, data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json; charset=utf-8"}, method="POST")
+        headers={"Content-Type": "application/json; charset=utf-8",
+                 "User-Agent": "Mozilla/5.0 (compatible; indexnow-push/1.0)"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             status = str(resp.status)

@@ -6,6 +6,7 @@
   "shop_url": "https://fwith.co.kr",
   "bugo_url": "https://easybugo.com/",
   "indexnow_key": "a73556bc5d3f59d7e44ba55c09c808af",
+  "og_image": "/assets/og.jpg",
   "accent": "#7A2634",
   "facility_noun": "장례식장",
   "primary_kw": "화환",
@@ -14,10 +15,10 @@
   "order_deadline": "밤 11시",
   "delivery_window": "3시간 이내",
   "products": [
-    {"name": "근조 3단 화환", "price": "59,000원", "note": "가장 기본적이면서도 품격 있는 장례식장 조화"},
-    {"name": "근조 고급 3단 화환", "price": "79,000원", "note": "풍성한 국화와 포인트 꽃이 어우러진 고급형"},
-    {"name": "근조 특대 3단 화환", "price": "109,000원", "note": "VIP 조문 및 특별한 예우를 위한 특대형"},
-    {"name": "근조 특특대 3단 화환", "price": "149,000원", "note": "최고의 예우를 표하는 프리미엄 특특대형"}
+    {"name": "근조 3단 화환", "price": "59,000원", "note": "가장 기본적이면서도 품격 있는 장례식장 조화", "img": "/assets/product/f1.jpg"},
+    {"name": "근조 고급 3단 화환", "price": "79,000원", "note": "풍성한 국화와 포인트 꽃이 어우러진 고급형", "img": "/assets/product/f2.jpg"},
+    {"name": "근조 특대 3단 화환", "price": "109,000원", "note": "VIP 조문 및 특별한 예우를 위한 특대형", "img": "/assets/product/f3.jpg"},
+    {"name": "근조 특특대 3단 화환", "price": "149,000원", "note": "최고의 예우를 표하는 프리미엄 특특대형", "img": "/assets/product/f4.jpg"}
   ],
   "process": [
     ["주문 접수", "{name} 빈소 호수와 상주 성함을 확인합니다."],

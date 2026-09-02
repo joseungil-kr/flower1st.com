@@ -25,6 +25,7 @@
 """
 import json, csv, os, shutil, argparse, html, urllib.parse, hashlib
 from collections import OrderedDict
+from datetime import date
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, "out")
@@ -70,6 +71,19 @@ def load_crematorium():
             tree.setdefault(r["sido"], []).append(r)
     return tree
 
+def og_image():
+    img = C.get("og_image")
+    if not img:
+        return ""
+    url = f"https://{C['domain']}{img}"
+    return f'<meta property="og:image" content="{esc(url)}">'
+
+def favicon_tags():
+    if not os.path.isdir(os.path.join(ROOT, "assets")):
+        return ""
+    return ('<link rel="icon" href="/assets/favicon.png" type="image/png">'
+            '<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">')
+
 # ---------------- 셸 ----------------
 def shell(title, desc, canon, body):
     a = C["accent"]
@@ -82,6 +96,8 @@ def shell(title, desc, canon, body):
 <meta property="og:type" content="website"><meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(desc)}"><meta property="og:url" content="{canon}">
 <meta property="og:locale" content="ko_KR"><meta property="og:site_name" content="{esc(C['brand'])}">
+{og_image()}
+{favicon_tags()}
 <meta name="theme-color" content="{a}">
 <style>
 :root{{--a:{a};--ink:#1b1b1e;--ink2:#565660;--line:#e4e4e9;--soft:#f6f5f7}}
@@ -108,6 +124,7 @@ table{{width:100%;border-collapse:collapse;font-size:15px}}
 th,td{{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}}
 th{{background:var(--soft);font-size:13px;color:var(--ink2)}}
 td.p{{text-align:right;white-space:nowrap;font-weight:700}}
+.p-thumb{{width:56px;height:56px;object-fit:cover;border-radius:6px;flex-shrink:0}}
 ol.pr{{padding-left:20px}} ol.pr li{{margin:8px 0}}
 details{{border-bottom:1px solid var(--line);padding:12px 0}}
 summary{{cursor:pointer;font-weight:600}} details p{{margin:10px 0 0;color:var(--ink2)}}
@@ -133,9 +150,13 @@ def cta():
     return b
 
 def products():
-    r = "".join(f"<tr><td>{esc(p['name'])}<br><span style='font-size:13px;color:var(--ink2)'>"
-                f"{esc(p['note'])}</span></td><td class='p'>{esc(p['price'])}</td></tr>"
-                for p in C["products"])
+    def row(p):
+        thumb = (f"<img class='p-thumb' src='{esc(p['img'])}' alt='{esc(p['name'])}' "
+                 f"width='56' height='56' loading='lazy'>" if p.get("img") else "")
+        return (f"<tr><td style='display:flex;gap:10px;align-items:center'>{thumb}"
+                f"<span>{esc(p['name'])}<br><span style='font-size:13px;color:var(--ink2)'>"
+                f"{esc(p['note'])}</span></span></td><td class='p'>{esc(p['price'])}</td></tr>")
+    r = "".join(row(p) for p in C["products"])
     return f"<h2>{esc(KW)} 가격</h2><table><tr><th>상품</th><th style='text-align:right'>가격</th></tr>{r}</table>"
 
 def process(name):
@@ -425,10 +446,15 @@ def main():
         slug, page = cremation_hub_page(sd, rs)
         write(os.path.join(OUT, slug, "index.html"), page); urls.append((slug, "0.6", "monthly"))
 
+    assets_dir = os.path.join(ROOT, "assets")
+    if os.path.isdir(assets_dir):
+        shutil.copytree(assets_dir, os.path.join(OUT, "assets"))
+
     base = f"https://{C['domain']}"
+    lastmod = date.today().isoformat()
     write(os.path.join(OUT, "sitemap.xml"),
           '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-          + "".join(f"<url><loc>{base}/{enc(s)}{'/' if s else ''}</loc>"
+          + "".join(f"<url><loc>{base}/{enc(s)}{'/' if s else ''}</loc><lastmod>{lastmod}</lastmod>"
                     f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>\n"
                     for s, pr, cf in urls) + "</urlset>\n")
     write(os.path.join(OUT, "robots.txt"), f"User-agent: *\nAllow: /\n\nSitemap: {base}/sitemap.xml\n")

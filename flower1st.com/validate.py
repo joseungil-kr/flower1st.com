@@ -9,7 +9,7 @@ C = json.load(open(os.path.join(ROOT, "config.json"), encoding="utf-8"))
 
 
 def main():
-    dirs = [d for d in os.listdir(OUT) if os.path.isdir(os.path.join(OUT, d))]
+    dirs = [d for d in os.listdir(OUT) if os.path.isdir(os.path.join(OUT, d)) and d != "assets"]
     pages = {d: open(os.path.join(OUT, d, "index.html"), encoding="utf-8").read() for d in dirs}
     pages[""] = open(os.path.join(OUT, "index.html"), encoding="utf-8").read()
 
