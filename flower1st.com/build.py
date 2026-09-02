@@ -84,8 +84,16 @@ def favicon_tags():
     return ('<link rel="icon" href="/assets/favicon.png" type="image/png">'
             '<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">')
 
+def site_verification_tags():
+    tags = []
+    if C.get("naver_site_verification"):
+        tags.append(f'<meta name="naver-site-verification" content="{esc(C["naver_site_verification"])}">')
+    if C.get("google_site_verification"):
+        tags.append(f'<meta name="google-site-verification" content="{esc(C["google_site_verification"])}">')
+    return "".join(tags)
+
 # ---------------- 셸 ----------------
-def shell(title, desc, canon, body):
+def shell(title, desc, canon, body, extra_head=""):
     a = C["accent"]
     return f"""<!doctype html>
 <html lang="ko"><head>
@@ -98,6 +106,7 @@ def shell(title, desc, canon, body):
 <meta property="og:locale" content="ko_KR"><meta property="og:site_name" content="{esc(C['brand'])}">
 {og_image()}
 {favicon_tags()}
+{extra_head}
 <meta name="theme-color" content="{a}">
 <link rel="stylesheet" href="/assets/style.css">
 <style>:root{{--a:{a}}}</style>
@@ -364,7 +373,7 @@ def home(tree, total, cremation):
 {ribbon('전국')}
 {faqs({'name': '전국 ' + FN, 'rooms': '', 'parking': '', 'extras': ''})}
 """
-    return shell(title, desc, canon, body)
+    return shell(title, desc, canon, body, extra_head=site_verification_tags())
 
 # ---------------- 빌드 ----------------
 def write(p, s):
