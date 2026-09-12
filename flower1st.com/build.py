@@ -53,6 +53,21 @@ def positive(r, k):  # 0은 "있다"고 서술하면 안 되는 수치 항목(�
 SGG_SLUG = {}  # (sido, sigungu) -> URL slug, 시도 간 동명 시군구는 시도명을 붙여 충돌 회피
 def sgg_slug(sido, sgg): return SGG_SLUG.get((sido, sgg), sgg + FN)
 
+SIDO_SHORT = {
+    "서울특별시": "서울", "부산광역시": "부산", "대구광역시": "대구", "인천광역시": "인천",
+    "광주광역시": "광주", "대전광역시": "대전", "울산광역시": "울산", "세종특별자치시": "세종",
+    "경기도": "경기", "강원특별자치도": "강원", "충청북도": "충북", "충청남도": "충남",
+    "전북특별자치도": "전북", "전라남도": "전남", "경상북도": "경북", "경상남도": "경남",
+    "제주특별자치도": "제주"
+}
+
+def sgg_display(sido, sgg):
+    if sgg.endswith("구") and " " not in sgg:
+        short = SIDO_SHORT.get(sido, sido)
+        return f"{short} {sgg}"
+    return sgg
+
+
 def load():
     rows = [r for r in csv.DictReader(open(os.path.join(ROOT, "facilities.csv"), encoding="utf-8"))
             if (r.get("name") or "").strip()]
@@ -232,10 +247,11 @@ def placement_section(name):
 
 def delivery_context_section(r):
     name, sido, sgg = r["name"], r["sido"], r["sigungu"]
+    disp = sgg_display(sido, sgg)
     txt = pick("delivery_context", name, "deliv") or (
-        f"{sido} {sgg} 관내 전담 화원 네트워크를 통해 주문 접수 즉시 신선한 국화로 화환을 제작합니다. {name}까지 최적 경로로 이동하여 {C['delivery_window']} 이내에 안착됩니다.")
-    tmpl = txt.format(name=name, sido=sido, sigungu=sgg, window=C['delivery_window'])
-    return f"<h2>{esc(sgg)} 관내 직배송 시스템 안내</h2><p>{esc(tmpl)}</p>"
+        f"{sido} {disp} 관내 전담 화원 네트워크를 통해 주문 접수 즉시 신선한 국화로 화환을 제작합니다. {name}까지 최적 경로로 이동하여 {C['delivery_window']} 이내에 안착됩니다.")
+    tmpl = txt.format(name=name, sido=sido, sigungu=disp, window=C['delivery_window'])
+    return f"<h2>{esc(disp)} 관내 직배송 시스템 안내</h2><p>{esc(tmpl)}</p>"
 
 def relation_tip_section(name):
     txt = pick("order_tip_by_relation", name, "rel") or (
@@ -302,7 +318,9 @@ def checklist(name):
 
 def dynamic_faqs(r):
     name = r["name"]
+    sido = r.get("sido", "")
     sgg = r.get("sigungu", "")
+    disp = sgg_display(sido, sgg)
     out = []
     if positive(r, "rooms"):
         out.append((f"{name} 빈소는 몇 개인가요?",
@@ -324,8 +342,8 @@ def dynamic_faqs(r):
 
     out.append((f"{name}으로 배송 시 사진을 받아볼 수 있나요?",
                 f"네, {name} 빈소 앞 안착 직후 리본 문구와 화환 실물이 선명하게 나오는 사진을 주문자 휴대전화로 전송해 드립니다."))
-    out.append((f"{sgg} 지역 당일 긴급 배송이 가능한가요?",
-                f"네, {sgg} 관내 제휴 화원에서 제작하여 접수 후 {C['delivery_window']} 이내에 {name}으로 신속하게 배송 완료합니다."))
+    out.append((f"{disp} 지역 당일 긴급 배송이 가능한가요?",
+                f"네, {disp} 관내 제휴 화원에서 제작하여 접수 후 {C['delivery_window']} 이내에 {name}으로 신속하게 배송 완료합니다."))
     return out
 
 def faqs(r):
@@ -361,10 +379,11 @@ def facility_page(r, siblings, cremation):
     slug = f"{name}{KW}"
     canon = f"https://{C['domain']}/{enc(slug)}/"
     kws = " · ".join([KW] + ALT[:2])
+    disp = sgg_display(sido, sgg)
     title = f"{name} {KW} 주문 · {ALT[0] if ALT else KW} 배송 | {C['brand']}"
     desc = (f"{name} 빈소로 {ALT[0] if ALT else KW}을 배송합니다. "
             f"{C['products'][0]['price']}부터. {C['order_deadline']}까지 접수 시 {C['delivery_window']} 배송. "
-            + (f"{r['address']}. " if has(r, 'address') else "") + f"{sgg} {FN} {KW} 주문.")
+            + (f"{r['address']}. " if has(r, 'address') else "") + f"{disp} {FN} {KW} 주문.")
 
     # 05 시설 정보
     rows = []
@@ -387,7 +406,7 @@ def facility_page(r, siblings, cremation):
     sgg_url = sgg_slug(sido, sgg)
     sib = "".join(f"<li><a href='/{enc(s+KW)}/'>{esc(s)} {esc(KW)}</a></li>" for s in siblings)
     body = f"""
-<nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › <a href="/{enc(sgg_url)}/">{esc(sgg)}</a> › {esc(name)}</nav>
+<nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › <a href="/{enc(sgg_url)}/">{esc(disp)}</a> › {esc(name)}</nav>
 <h1>{esc(name)} {esc(KW)}</h1>
 <p class="lede">{lede}</p>
 {cta()}
@@ -411,9 +430,9 @@ def facility_page(r, siblings, cremation):
 {faqs(r)}
 {bugo_note()}
 {cremation_note(sido, cremation)}
-<h2>{esc(sgg)}의 다른 {esc(FN)}</h2>
+<h2>{esc(disp)}의 다른 {esc(FN)}</h2>
 <ul class="k">{sib}</ul>
-<p style="margin-top:16px"><a href="/{enc(sgg_url)}/">{esc(sgg)} {esc(FN)} 전체 보기 →</a></p>
+<p style="margin-top:16px"><a href="/{enc(sgg_url)}/">{esc(disp)} {esc(FN)} 전체 보기 →</a></p>
 {cta()}
 """
     # Schema.org JSON-LD 생성 (LocalBusiness + FAQPage)
@@ -452,7 +471,7 @@ def facility_page(r, siblings, cremation):
                 "itemListElement": [
                     {"@type": "ListItem", "position": 1, "name": "홈", "item": f"https://{C['domain']}/"},
                     {"@type": "ListItem", "position": 2, "name": sido, "item": f"https://{C['domain']}/{enc(sido+FN)}/"},
-                    {"@type": "ListItem", "position": 3, "name": sgg, "item": f"https://{C['domain']}/{enc(sgg_url)}/"},
+                    {"@type": "ListItem", "position": 3, "name": disp, "item": f"https://{C['domain']}/{enc(sgg_url)}/"},
                     {"@type": "ListItem", "position": 4, "name": name, "item": canon}
                 ]
             },
@@ -471,16 +490,17 @@ def facility_page(r, siblings, cremation):
 def sigungu_page(sido, sgg, rows, other_sgg, cremation):
     slug = sgg_slug(sido, sgg)
     canon = f"https://{C['domain']}/{enc(slug)}/"
-    title = f"{sgg} {FN} {KW} 주문 | {C['brand']}"
-    desc = f"{sido} {sgg} {FN} {len(rows)}곳에 {ALT[0] if ALT else KW}을 배송합니다. {C['products'][0]['price']}부터."
+    disp = sgg_display(sido, sgg)
+    title = f"{disp} {FN} {KW} 주문 | {C['brand']}"
+    desc = f"{sido} {disp} {FN} {len(rows)}곳에 {ALT[0] if ALT else KW}을 배송합니다. {C['products'][0]['price']}부터."
     lst = "".join(f"<li><a href='/{enc(r['name']+KW)}/'>{esc(r['name'])} {esc(KW)}</a></li>" for r in rows)
-    oth = "".join(f"<li><a href='/{enc(sgg_slug(sido, s))}/'>{esc(s)} {esc(FN)}</a></li>" for s in other_sgg)
+    oth = "".join(f"<li><a href='/{enc(sgg_slug(sido, s))}/'>{esc(sgg_display(sido, s))} {esc(FN)}</a></li>" for s in other_sgg)
     body = f"""
-<nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › {esc(sgg)}</nav>
-<h1>{esc(sgg)} {esc(FN)} {esc(KW)}</h1>
-<p class="lede">{esc(sgg)} {esc(FN)} {len(rows)}곳에 {esc(KW)}을 배송합니다. {esc(C['products'][0]['price'])}부터.</p>
+<nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › {esc(disp)}</nav>
+<h1>{esc(disp)} {esc(FN)} {esc(KW)}</h1>
+<p class="lede">{esc(disp)} {esc(FN)} {len(rows)}곳에 {esc(KW)}을 배송합니다. {esc(C['products'][0]['price'])}부터.</p>
 {cta()}
-<h2>{esc(sgg)}의 {esc(FN)}</h2><ul class="k">{lst}</ul>
+<h2>{esc(disp)}의 {esc(FN)}</h2><ul class="k">{lst}</ul>
 {products()}
 {cremation_note(sido, cremation)}
 <h2>{esc(sido)}의 다른 지역</h2><ul class="k">{oth}</ul>
@@ -502,7 +522,7 @@ def sido_page(sido, sgg_map, total, other_sido, cremation):
                       for r in facilities_list)
     else:
         sub_heading = f"시·군·구별 {esc(FN)}"
-        lst = "".join(f"<li><a href='/{enc(sgg_slug(sido, s))}/'>{esc(s)} <span style='color:#888'>{len(v)}</span></a></li>"
+        lst = "".join(f"<li><a href='/{enc(sgg_slug(sido, s))}/'>{esc(sgg_display(sido, s))} <span style='color:#888'>{len(v)}</span></a></li>"
                       for s, v in sgg_map.items())
 
     oth = "".join(f"<li><a href='/{enc(s+FN)}/'>{esc(s)}</a></li>" for s in other_sido)
