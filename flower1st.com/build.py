@@ -572,6 +572,22 @@ def home(tree, total, cremation):
 {process('해당 ' + FN)}
 {ribbon('전국')}
 {faqs({'name': '전국 ' + FN, 'rooms': '', 'parking': '', 'extras': ''})}
+<h2>개업식·행사 축하화환 당일 배달</h2>
+<p class="lede">전국 주요 시 단위 개업식, 이전, 창립기념 축하화환 및 개업 화분 빠른 당일 배송 서비스</p>
+<ul class="k">
+<li><a href="/%EC%95%88%EC%82%B0%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%94%ED%99%98/">안산시 축하화환</a></li>
+<li><a href="/%EC%88%98%EC%9B%90%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">수원시 축하화환</a></li>
+<li><a href="/%EC%84%B1%EB%82%A8%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">성남시 축하화환</a></li>
+<li><a href="/%EA%B3%A0%EC%96%91%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">고양시 축하화환</a></li>
+<li><a href="/%ED%99%94%EC%84%B1%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">화성시 축하화환</a></li>
+<li><a href="/%EB%B6%80%EC%B2%9C%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">부천시 축하화환</a></li>
+<li><a href="/%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">서울특별시 축하화환</a></li>
+<li><a href="/%EC%9D%B8%EC%B2%9C%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">인천광역시 축하화환</a></li>
+<li><a href="/%EB%8C%80%EC%A0%84%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">대전광역시 축하화환</a></li>
+<li><a href="/%EB%8C%80%EA%B5%AC%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">대구광역시 축하화환</a></li>
+<li><a href="/%EA%B4%91%EC%A3%BC%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">광주광역시 축하화환</a></li>
+<li><a href="/%EB%B6%80%EC%82%B0%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">부산광역시 축하화환</a></li>
+</ul>
 """
     return shell(title, desc, canon, body, extra_head=site_verification_tags())
 
@@ -622,6 +638,20 @@ def main():
         slug, page = cremation_hub_page(sd, rs)
         write(os.path.join(OUT, slug, "index.html"), page); urls.append((slug, "0.6", "monthly"))
 
+    # 개업식 축하화환 시 단위 페이지 빌드
+    cities_file = os.path.join(ROOT, "celebration_cities.json")
+    celeb_count = 0
+    if os.path.isfile(cities_file):
+        try:
+            import build_celebration
+            for c in build_celebration.CITIES:
+                c_slug, c_html = build_celebration.build_celebration_page(c)
+                write(os.path.join(OUT, c_slug, "index.html"), c_html)
+                urls.append((c_slug, "0.8", "weekly"))
+                celeb_count += 1
+        except Exception as e:
+            print(f"축하화환 빌드 중 경고: {e}")
+
     assets_dir = os.path.join(ROOT, "assets")
     if os.path.isdir(assets_dir):
         shutil.copytree(assets_dir, os.path.join(OUT, "assets"))
@@ -639,7 +669,7 @@ def main():
     if key:
         write(os.path.join(OUT, f"{key}.txt"), key)  # 재빌드해도 안 사라지게 config 값으로 매번 재생성
 
-    print(f"시설 {total}곳 + 화장시설 {len(cremation)}개 시도 → {len(urls)}개 URL 생성  ({OUT})")
+    print(f"시설 {total}곳 + 화장시설 {len(cremation)}개 시도 + 축하화환 {celeb_count}개 시 → {len(urls)}개 URL 생성  ({OUT})")
 
 if __name__ == "__main__":
     main()
