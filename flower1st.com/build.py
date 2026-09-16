@@ -61,6 +61,25 @@ SIDO_SHORT = {
     "제주특별자치도": "제주"
 }
 
+CELEB_PATH = os.path.join(ROOT, "celebration_cities.json")
+CELEB_CITIES = json.load(open(CELEB_PATH, encoding="utf-8")) if os.path.isfile(CELEB_PATH) else []
+SIDO_CELEB = {}
+CITY_CELEB = {}
+for _c in CELEB_CITIES:
+    SIDO_CELEB.setdefault(_c["sido"], []).append(_c)
+    CITY_CELEB[(_c["sido"], _c["city"])] = _c
+
+def get_matching_celeb(sido, sgg):
+    if (sido, sgg) in CITY_CELEB:
+        return CITY_CELEB[(sido, sgg)]
+    if " " in sgg:
+        parent_city = sgg.split()[0]
+        if (sido, parent_city) in CITY_CELEB:
+            return CITY_CELEB[(sido, parent_city)]
+    if (sido, sido) in CITY_CELEB:
+        return CITY_CELEB[(sido, sido)]
+    return None
+
 def sgg_display(sido, sgg):
     if sgg.endswith("구") and " " not in sgg:
         short = SIDO_SHORT.get(sido, sido)
@@ -405,6 +424,12 @@ def facility_page(r, siblings, cremation):
 
     sgg_url = sgg_slug(sido, sgg)
     sib = "".join(f"<li><a href='/{enc(s+KW)}/'>{esc(s)} {esc(KW)}</a></li>" for s in siblings)
+    match_celeb = get_matching_celeb(sido, sgg)
+    celeb_facility_note = ""
+    if match_celeb:
+        celeb_facility_note = (f"<div class='note'><b>{esc(match_celeb['city'])} 개업식·이전 축하화환이 필요하신가요?</b>"
+                               f"<p>{esc(match_celeb['city'])} 전지역 당일 3시간 특급 배송, 축하 3단 화환 59,000원부터. "
+                               f"<a href='/{enc(match_celeb['slug'])}/'>{esc(match_celeb['city'])} 축하화환 주문 안내 보기 →</a></p></div>")
     body = f"""
 <nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › <a href="/{enc(sgg_url)}/">{esc(disp)}</a> › {esc(name)}</nav>
 <h1>{esc(name)} {esc(KW)}</h1>
@@ -430,6 +455,7 @@ def facility_page(r, siblings, cremation):
 {faqs(r)}
 {bugo_note()}
 {cremation_note(sido, cremation)}
+{celeb_facility_note}
 <h2>{esc(disp)}의 다른 {esc(FN)}</h2>
 <ul class="k">{sib}</ul>
 <p style="margin-top:16px"><a href="/{enc(sgg_url)}/">{esc(disp)} {esc(FN)} 전체 보기 →</a></p>
@@ -495,6 +521,13 @@ def sigungu_page(sido, sgg, rows, other_sgg, cremation):
     desc = f"{sido} {disp} {FN} {len(rows)}곳에 {ALT[0] if ALT else KW}을 배송합니다. {C['products'][0]['price']}부터."
     lst = "".join(f"<li><a href='/{enc(r['name']+KW)}/'>{esc(r['name'])} {esc(KW)}</a></li>" for r in rows)
     oth = "".join(f"<li><a href='/{enc(sgg_slug(sido, s))}/'>{esc(sgg_display(sido, s))} {esc(FN)}</a></li>" for s in other_sgg)
+    match_celeb = get_matching_celeb(sido, sgg)
+    celeb_note = ""
+    if match_celeb:
+        celeb_note = (f"<div class='note'><b>{esc(match_celeb['city'])} 개업식·행사 축하화환이 필요하신가요?</b>"
+                      f"<p>{esc(match_celeb['city'])} 전지역 3시간 당일 특급 배송, 개업식·이전 축하 3단 화환 및 대박 화분 59,000원부터. "
+                      f"<a href='/{enc(match_celeb['slug'])}/'>{esc(match_celeb['city'])} 축하화환 주문 안내 보기 →</a></p></div>")
+
     body = f"""
 <nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › {esc(disp)}</nav>
 <h1>{esc(disp)} {esc(FN)} {esc(KW)}</h1>
@@ -502,6 +535,7 @@ def sigungu_page(sido, sgg, rows, other_sgg, cremation):
 {cta()}
 <h2>{esc(disp)}의 {esc(FN)}</h2><ul class="k">{lst}</ul>
 {products()}
+{celeb_note}
 {cremation_note(sido, cremation)}
 <h2>{esc(sido)}의 다른 지역</h2><ul class="k">{oth}</ul>
 """
@@ -526,6 +560,12 @@ def sido_page(sido, sgg_map, total, other_sido, cremation):
                       for s, v in sgg_map.items())
 
     oth = "".join(f"<li><a href='/{enc(s+FN)}/'>{esc(s)}</a></li>" for s in other_sido)
+    celeb_sido = SIDO_CELEB.get(sido, [])
+    celeb_block = ""
+    if celeb_sido:
+        c_items = "".join(f"<li><a href='/{enc(c['slug'])}/'>{esc(c['city'])} 축하화환</a></li>" for c in celeb_sido)
+        celeb_block = f"<h2>{esc(sido)} 개업식·행사 축하화환 당일 배달</h2><ul class='k'>{c_items}</ul>"
+
     body = f"""
 <nav class="bc"><a href="/">홈</a> › {esc(sido)}</nav>
 <h1>{esc(sido)} {esc(FN)} {esc(KW)}</h1>
@@ -533,6 +573,7 @@ def sido_page(sido, sgg_map, total, other_sido, cremation):
 {cta()}
 <h2>{sub_heading}</h2><ul class="k">{lst}</ul>
 {products()}
+{celeb_block}
 {cremation_note(sido, cremation)}
 <h2>다른 지역</h2><ul class="k">{oth}</ul>
 """
@@ -563,6 +604,7 @@ def home(tree, total, cremation):
     desc = f"전국 {FN} {total}곳에 {ALT[0] if ALT else KW}을 배송합니다. {C['products'][0]['price']}부터."
     lst = "".join(f"<li><a href='/{enc(sd+FN)}/'>{esc(sd)} <span style='color:#888'>"
                   f"{sum(len(v) for v in m.values())}</span></a></li>" for sd, m in tree.items())
+    celeb_links = "".join(f"<li><a href='/{enc(c['slug'])}/'>{esc(c['city'])} 축하화환</a></li>" for c in CELEB_CITIES)
     body = f"""
 <h1>전국 {esc(FN)} {esc(KW)}</h1>
 <p class="lede">{esc(C['hero_line'])}</p>
@@ -575,18 +617,7 @@ def home(tree, total, cremation):
 <h2>개업식·행사 축하화환 당일 배달</h2>
 <p class="lede">전국 주요 시 단위 개업식, 이전, 창립기념 축하화환 및 개업 화분 빠른 당일 배송 서비스</p>
 <ul class="k">
-<li><a href="/%EC%95%88%EC%82%B0%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%94%ED%99%98/">안산시 축하화환</a></li>
-<li><a href="/%EC%88%98%EC%9B%90%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">수원시 축하화환</a></li>
-<li><a href="/%EC%84%B1%EB%82%A8%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">성남시 축하화환</a></li>
-<li><a href="/%EA%B3%A0%EC%96%91%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">고양시 축하화환</a></li>
-<li><a href="/%ED%99%94%EC%84%B1%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">화성시 축하화환</a></li>
-<li><a href="/%EB%B6%80%EC%B2%9C%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">부천시 축하화환</a></li>
-<li><a href="/%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">서울특별시 축하화환</a></li>
-<li><a href="/%EC%9D%B8%EC%B2%9C%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">인천광역시 축하화환</a></li>
-<li><a href="/%EB%8C%80%EC%A0%84%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">대전광역시 축하화환</a></li>
-<li><a href="/%EB%8C%80%EA%B5%AC%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">대구광역시 축하화환</a></li>
-<li><a href="/%EA%B4%91%EC%A3%BC%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">광주광역시 축하화환</a></li>
-<li><a href="/%EB%B6%80%EC%82%B0%EA%B4%91%EC%97%AD%EC%8B%9C%EC%B6%95%ED%95%98%ED%99%98/">부산광역시 축하화환</a></li>
+{celeb_links}
 </ul>
 """
     return shell(title, desc, canon, body, extra_head=site_verification_tags())
