@@ -517,8 +517,8 @@ def sigungu_page(sido, sgg, rows, other_sgg, cremation):
     slug = sgg_slug(sido, sgg)
     canon = f"https://{C['domain']}/{enc(slug)}/"
     disp = sgg_display(sido, sgg)
-    title = f"{disp} {FN} {KW} 주문 | {C['brand']}"
-    desc = f"{sido} {disp} {FN} {len(rows)}곳에 {ALT[0] if ALT else KW}을 배송합니다. {C['products'][0]['price']}부터."
+    title = f"{disp} {FN} {KW} 주문 · {ALT[0] if ALT else KW} 당일 배송 | {C['brand']}"
+    desc = f"{sido} {disp} 관내 {FN} {len(rows)}곳에 {ALT[0] if ALT else KW}을 3시간 이내에 당일 특급 배송합니다. 59,000원부터 정찰제, 현장 안착 사진 안심 문자 전송."
     lst = "".join(f"<li><a href='/{enc(r['name']+KW)}/'>{esc(r['name'])} {esc(KW)}</a></li>" for r in rows)
     oth = "".join(f"<li><a href='/{enc(sgg_slug(sido, s))}/'>{esc(sgg_display(sido, s))} {esc(FN)}</a></li>" for s in other_sgg)
     match_celeb = get_matching_celeb(sido, sgg)
@@ -528,24 +528,85 @@ def sigungu_page(sido, sgg, rows, other_sgg, cremation):
                       f"<p>{esc(match_celeb['city'])} 전지역 3시간 당일 특급 배송, 개업식·이전 축하 3단 화환 및 대박 화분 59,000원부터. "
                       f"<a href='/{enc(match_celeb['slug'])}/'>{esc(match_celeb['city'])} 축하화환 주문 안내 보기 →</a></p></div>")
 
+    # 지역 FAQ 및 JSON-LD 구성
+    sgg_faqs = [
+        (f"{disp} 지역 장례식장으로 당일 빠른 화환 배송이 가능한가요?",
+         f"네, {sido} {disp} 관내 제휴 화원 네트워크를 통해 주문 접수 즉시 신선한 생화 국화로 맞춤 제작하여 3시간 이내에 빈소까지 신속하게 안착 배송합니다."),
+        (f"{disp} 장례식장 빈소 호실을 아직 몰라도 주문할 수 있나요?",
+         f"네, 상주 성함이나 고인 성함만 알려주시면 현장 배송 기사님이 {disp} 관내 장례식장 안내실에서 빈소 호실을 직접 교차 확인한 후 정확하게 설치해 드립니다."),
+        (f"{disp} 화환 배송이 완료되면 현장 사진을 받아볼 수 있나요?",
+         f"네, {disp} 관내 빈소 앞 안착 직후 리본 문구와 화환 전체가 선명하게 보이는 현장 확인 사진을 주문자님의 휴대전화 번호로 즉시 문자 전송해 드립니다."),
+        (f"종교별(기독교·불교·천주교) 리본 문구 인쇄가 가능한가요?",
+         f"네, 가장 보편적인 '삼가 故人의 冥福을 빕니다'뿐만 아니라 기독교(천국에서 영면하소서), 천주교(고인의 영식을 위해 기도드립니다), 불교(극락왕생 발원) 등 종교별 맞춤 리본을 무료로 제작해 드립니다.")
+    ]
+    faq_html = "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in sgg_faqs)
+
+    sgg_schema = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Florist",
+                "name": f"{disp} {FN} {KW} 배송 - {C['brand']}",
+                "url": canon,
+                "telephone": C["phone"],
+                "priceRange": f"{C['products'][0]['price']} ~ {C['products'][-1]['price']}",
+                "address": {
+                    "@type": "PostalAddress",
+                    "addressLocality": disp,
+                    "addressRegion": sido,
+                    "addressCountry": "KR"
+                }
+            },
+            {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {"@type": "ListItem", "position": 1, "name": "홈", "item": f"https://{C['domain']}/"},
+                    {"@type": "ListItem", "position": 2, "name": sido, "item": f"https://{C['domain']}/{enc(sido+FN)}/"},
+                    {"@type": "ListItem", "position": 3, "name": disp, "item": canon}
+                ]
+            },
+            {
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": q,
+                        "acceptedAnswer": {"@type": "Answer", "text": a}
+                    } for q, a in sgg_faqs
+                ]
+            }
+        ]
+    }
+    schema_json = json.dumps(sgg_schema, ensure_ascii=False)
+    extra_head = f'<script type="application/ld+json">{schema_json}</script>'
+
     body = f"""
 <nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › {esc(disp)}</nav>
 <h1>{esc(disp)} {esc(FN)} {esc(KW)}</h1>
-<p class="lede">{esc(disp)} {esc(FN)} {len(rows)}곳에 {esc(KW)}을 배송합니다. {esc(C['products'][0]['price'])}부터.</p>
+<p class="lede">{esc(disp)} 관내 {esc(FN)} {len(rows)}곳에 {esc(KW)}을 당일 3시간 이내에 배송합니다. {esc(C['products'][0]['price'])}부터 정찰제, 현장 사진 전송.</p>
 {cta()}
-<h2>{esc(disp)}의 {esc(FN)}</h2><ul class="k">{lst}</ul>
+<h2>{esc(disp)}의 {esc(FN)} 목록</h2><ul class="k">{lst}</ul>
 {products()}
+<h2>{esc(disp)} 관내 직배송 시스템 및 배송 안내</h2>
+<p>{esc(sido)} {esc(disp)} 전지역은 당일 입고된 싱싱한 특상급 국화만을 사용하여 현지 전문 플로리스트가 정성을 다해 제작합니다. 주문 접수 즉시 3시간 이내 빠른 안착을 보장하며, 복도 동선과 빈소 여건에 맞춰 조문객의 통행을 방해하지 않는 최적의 위치에 단정하게 배치합니다.</p>
+{process(disp)}
+{ribbon(disp)}
+{buying_guide(disp)}
+{etiquette(disp)}
+<h2>{esc(disp)} {esc(KW)} 자주 묻는 질문</h2>
+{faq_html}
 {celeb_note}
 {cremation_note(sido, cremation)}
 <h2>{esc(sido)}의 다른 지역</h2><ul class="k">{oth}</ul>
+{cta()}
 """
-    return slug, shell(title, desc, canon, body)
+    return slug, shell(title, desc, canon, body, extra_head=extra_head)
 
 def sido_page(sido, sgg_map, total, other_sido, cremation):
     slug = sido + FN
     canon = f"https://{C['domain']}/{enc(slug)}/"
-    title = f"{sido} {FN} {KW} 주문 | {C['brand']}"
-    desc = f"{sido} {FN} {total}곳에 {ALT[0] if ALT else KW}을 배송합니다. 매일 {C['order_deadline']}까지 접수."
+    title = f"{sido} {FN} {KW} 주문 · {ALT[0] if ALT else KW} 당일 배송 | {C['brand']}"
+    desc = f"{sido} 전지역 {FN} {total}곳에 {ALT[0] if ALT else KW}을 3시간 이내에 당일 특급 배송합니다. 59,000원부터 정찰제, 매일 {C['order_deadline']}까지 접수, 안착 사진 전송."
     
     # 세종처럼 시도==시군구(하위 시군구가 시도 자신 1개만 있어 시군구 허브가 별도로 없는 경우)는 시설 목록을 직접 렌더
     is_single_sgg = (len(sgg_map) == 1 and list(sgg_map.keys())[0] == sido)
@@ -566,37 +627,149 @@ def sido_page(sido, sgg_map, total, other_sido, cremation):
         c_items = "".join(f"<li><a href='/{enc(c['slug'])}/'>{esc(c['city'])} 축하화환</a></li>" for c in celeb_sido)
         celeb_block = f"<h2>{esc(sido)} 개업식·행사 축하화환 당일 배달</h2><ul class='k'>{c_items}</ul>"
 
+    sido_faqs = [
+        (f"{sido} 전지역 당일 빠른 화환 배송이 가능한가요?",
+         f"네, {sido} 전역 시·군·구 관내 제휴 화원 네트워크를 통해 주문 접수 즉시 신선한 생화로 제작하여 3시간 이내에 빈소까지 신속하게 안착 배송합니다."),
+        (f"{sido} 지역 장례식장 화환 배송 후 확인 사진을 받아볼 수 있나요?",
+         f"네, 빈소 앞 안착 직후 리본 문구와 화환 전체가 선명하게 촬영된 확인 사진을 주문 고객님의 휴대전화 번호로 문자로 즉시 발송해 드립니다."),
+        (f"주말이나 공휴일, 야간에도 배송 접수가 가능한가요?",
+         f"네, 연중무휴 365일 매일 밤 {C['order_deadline']}까지 전문 상담원이 상주하여 신속하게 주문을 접수하고 당일 배송해 드립니다.")
+    ]
+    faq_html = "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in sido_faqs)
+
+    sido_schema = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Florist",
+                "name": f"{sido} {FN} {KW} 배송 - {C['brand']}",
+                "url": canon,
+                "telephone": C["phone"],
+                "priceRange": f"{C['products'][0]['price']} ~ {C['products'][-1]['price']}",
+                "address": {
+                    "@type": "PostalAddress",
+                    "addressRegion": sido,
+                    "addressCountry": "KR"
+                }
+            },
+            {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {"@type": "ListItem", "position": 1, "name": "홈", "item": f"https://{C['domain']}/"},
+                    {"@type": "ListItem", "position": 2, "name": sido, "item": canon}
+                ]
+            },
+            {
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": q,
+                        "acceptedAnswer": {"@type": "Answer", "text": a}
+                    } for q, a in sido_faqs
+                ]
+            }
+        ]
+    }
+    schema_json = json.dumps(sido_schema, ensure_ascii=False)
+    extra_head = f'<script type="application/ld+json">{schema_json}</script>'
+
     body = f"""
 <nav class="bc"><a href="/">홈</a> › {esc(sido)}</nav>
 <h1>{esc(sido)} {esc(FN)} {esc(KW)}</h1>
-<p class="lede">{esc(sido)} {esc(FN)} {total}곳에 {esc(KW)}을 배송합니다.</p>
+<p class="lede">{esc(sido)} 전지역 {esc(FN)} {total}곳에 {esc(KW)}을 신속하고 정갈하게 배송합니다. 매일 {esc(C['order_deadline'])}까지 접수.</p>
 {cta()}
 <h2>{sub_heading}</h2><ul class="k">{lst}</ul>
 {products()}
+<h2>{esc(sido)} 전지역 신속 배송 네트워크</h2>
+<p>{esc(sido)} 관내 각 시·군·구에 위치한 직영 제휴 화원을 통해 배송지 인근에서 즉시 제작하므로, 장거리 이동 중 꽃이 시들거나 훼손되는 일 없이 최상의 신선도를 유지한 상태로 빈소에 안착됩니다. 현장 안착 사진 안심 문자 서비스를 통해 조문 현장에 직접 가시지 못하는 분들도 안심하고 이용하실 수 있습니다.</p>
+{process(sido)}
+{ribbon(sido)}
+{buying_guide(sido)}
+{etiquette(sido)}
+<h2>{esc(sido)} {esc(KW)} 자주 묻는 질문</h2>
+{faq_html}
 {celeb_block}
 {cremation_note(sido, cremation)}
 <h2>다른 지역</h2><ul class="k">{oth}</ul>
+{cta()}
 """
-    return slug, shell(title, desc, canon, body)
+    return slug, shell(title, desc, canon, body, extra_head=extra_head)
 
 def cremation_hub_page(sido, rows):
     slug = sido + "화장시설안내"
     canon = f"https://{C['domain']}/{enc(slug)}/"
-    title = f"{sido} 화장시설(화장장) 안내 | {C['brand']}"
-    desc = f"{sido} 화장시설(화장장) {len(rows)}곳의 위치, 연락처, 화장로수 및 예약 정보 안내."
+    title = f"{sido} 화장시설(화장장) 안내 · 위치 및 이용 정보 | {C['brand']}"
+    desc = f"{sido} 관내 화장시설(화장장) {len(rows)}곳의 상세 위치, 연락처, 화장로수 및 예약 절차 안내. 발인 이후 승화원 화장 절차 가이드."
     trows = "".join(
-        f"<tr><td>{esc(r['name'])}<br><span style='font-size:13px;color:var(--ink2)'>{esc(r['address'])}</span></td>"
+        f"<tr><td><b>{esc(r['name'])}</b><br><span style='font-size:13px;color:var(--ink2)'>{esc(r['address'])}</span></td>"
         f"<td style='white-space:nowrap'>{esc(r['phone'])}</td></tr>" for r in rows)
+
+    crem_faqs = [
+        (f"{sido} 화장시설 예약은 어떻게 진행하나요?",
+         "전국 화장시설 예약은 보건복지부 'e하늘 장사정보시스템(1577-4129)'을 통해 온라인으로 접수하실 수 있습니다. 사망 진단 후 장례식장 또는 상조회사를 통해 희망 일시와 회차를 지정하여 예약합니다."),
+        ("화장시설 방문 시 준비해야 할 필수 서류는 무엇인가요?",
+         "사망진단서(또는 사체검안서) 원본 1부와 직계 유족의 신분증이 반드시 필요합니다. 관내 주민 감면 혜택을 받으시려면 고인의 주민등록초본(말소자 초본)을 지참하셔야 합니다."),
+        ("화장 절차 소요 시간은 얼마나 걸리나요?",
+         "화로 진입부터 화장, 냉각, 유골 수골(봉안함 안치)까지 평균 1시간 30분에서 2시간 정도 소요됩니다.")
+    ]
+    faq_html = "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in crem_faqs)
+
+    crem_schema = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {"@type": "ListItem", "position": 1, "name": "홈", "item": f"https://{C['domain']}/"},
+                    {"@type": "ListItem", "position": 2, "name": f"{sido} 장례식장", "item": f"https://{C['domain']}/{enc(sido+FN)}/"},
+                    {"@type": "ListItem", "position": 3, "name": f"{sido} 화장시설 안내", "item": canon}
+                ]
+            },
+            {
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": q,
+                        "acceptedAnswer": {"@type": "Answer", "text": a}
+                    } for q, a in crem_faqs
+                ]
+            }
+        ]
+    }
+    schema_json = json.dumps(crem_schema, ensure_ascii=False)
+    extra_head = f'<script type="application/ld+json">{schema_json}</script>'
+
     body = f"""
-<nav class="bc"><a href="/">홈</a> › {esc(sido)} 화장시설 안내</nav>
+<nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › {esc(sido)} 화장시설 안내</nav>
 <h1>{esc(sido)} 화장시설(화장장) 안내</h1>
-<p class="lede">발인 이후 화장 절차를 준비 중이시라면 {esc(sido)} 화장시설 {len(rows)}곳의 정보를 확인해 보세요.</p>
+<p class="lede">발인 이후 화장 절차를 준비 중이시라면 {esc(sido)} 관내 화장시설 {len(rows)}곳의 위치, 대표 연락처 및 이용 안내를 확인해 보세요.</p>
 {cta()}
 <h2>{esc(sido)} 화장시설 목록</h2>
-<table><tr><th>시설명 · 주소</th><th>전화</th></tr>{trows}</table>
-<p style="margin-top:16px"><a href="/{enc(sido+FN)}/">{esc(sido)} {esc(FN)} {esc(KW)} 보기 →</a></p>
+<table><tr><th>시설명 · 주소</th><th>대표 전화</th></tr>{trows}</table>
+
+<h2>화장시설 이용 절차 및 유의사항</h2>
+<div class='note'>
+<b>1. e하늘 장사정보시스템 사전 예약</b>
+<p>전국 모든 공설 화장시설은 온라인 사전 예약제로 운영됩니다. 발인 시각과 이동 동선을 고려하여 적절한 회차를 미리 예약하셔야 일정에 차질이 없습니다.</p>
+</div>
+<div class='note'>
+<b>2. 관내 거주자 감면 요건 확인</b>
+<p>고인의 주민등록상 주소지가 {esc(sido)} 관내에 등록되어 있는 경우 관외 거주자에 비해 대폭 감면된 이용 요금이 적용됩니다. 주민등록초본을 반드시 지참하세요.</p>
+</div>
+<div class='note'>
+<b>3. 봉안당 및 자연장 연계</b>
+<p>화장 종료 후 유골을 봉안당(납골당), 수목장, 잔디장 등으로 안치하기 위한 서류(화장증명서)는 수골 후 해당 화장시설 관리사무소에서 즉시 발급됩니다.</p>
+</div>
+
+<h2>화장시설 이용 자주 묻는 질문</h2>
+{faq_html}
+
+<p style="margin-top:20px"><a href="/{enc(sido+FN)}/">{esc(sido)} {esc(FN)} {esc(KW)} 목록 보기 →</a></p>
+{cta()}
 """
-    return slug, shell(title, desc, canon, body)
+    return slug, shell(title, desc, canon, body, extra_head=extra_head)
 
 def home(tree, total, cremation):
     canon = f"https://{C['domain']}/"
