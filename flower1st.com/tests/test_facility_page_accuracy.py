@@ -24,8 +24,11 @@ class FacilityPageAccuracyTests(unittest.TestCase):
                 with self.subTest(facility_type=facility_type, rooms=rooms):
                     guide = build.facility_deep_guide(row)
                     rendered.add(guide)
-                    self.assertIn("빈소 호수와 상주 성함", guide)
-                    self.assertIn("시설 안내에 따라 확인", guide)
+                    self.assertIn(
+                        "빈소 호수와 상주 성함을 함께 알려주세요. "
+                        "리본에 넣을 보내시는 분의 이름이나 단체명도 함께 남겨주시면 됩니다.",
+                        guide,
+                    )
                     for unsupported_claim in (
                         "복도 구획이 체계적으로 분리",
                         "상례 전용 진입로",
@@ -55,6 +58,7 @@ class FacilityPageAccuracyTests(unittest.TestCase):
         florist = next(item for item in graph if item.get("@type") == "Florist")
 
         self.assertNotIn("address", florist)
+        self.assertEqual(build.C["brand"], florist["name"])
         self.assertIn(row["address"], page, "facility address remains visible as destination information")
         self.assertIn("주소", page)
         self.assertTrue(any(item.get("@type") == "BreadcrumbList" for item in graph))
@@ -63,6 +67,7 @@ class FacilityPageAccuracyTests(unittest.TestCase):
         canonical = re.search(r'<link rel="canonical" href="([^"]+)"', page)
         self.assertIsNotNone(canonical)
         self.assertEqual(f"https://{build.C['domain']}/{build.enc(slug)}/", canonical.group(1))
+        self.assertEqual(canonical.group(1), florist["url"])
 
 
 if __name__ == "__main__":

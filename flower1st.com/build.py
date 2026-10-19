@@ -210,8 +210,8 @@ def facility_intro(r):
 
 def facility_deep_guide(r):
     return ("<h2>화환 주문 안내</h2>"
-            "<p>주문 시 빈소 호수와 상주 성함을 정확히 확인하여 전달해 주세요. "
-            "화환의 반입 경로와 배치 위치는 시설 안내에 따라 확인해 주세요.</p>")
+            "<p>빈소 호수와 상주 성함을 함께 알려주세요. "
+            "리본에 넣을 보내시는 분의 이름이나 단체명도 함께 남겨주시면 됩니다.</p>")
 
 def placement_section(name):
     txt = pick("placement_guide", name, "place") or (
@@ -435,7 +435,7 @@ def facility_page(r, siblings, cremation):
         "@graph": [
             {
                 "@type": "Florist",
-                "name": f"{name} {KW} 배송 - {C['brand']}",
+                "name": C["brand"],
                 "url": canon,
                 "telephone": C["phone"],
                 "priceRange": f"{C['products'][0]['price']} ~ {C['products'][-1]['price']}"
