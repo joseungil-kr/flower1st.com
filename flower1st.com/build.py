@@ -209,54 +209,9 @@ def facility_intro(r):
     return f"<p>{s}</p>"
 
 def facility_deep_guide(r):
-    name, sido, sgg = r["name"], r["sido"], r["sigungu"]
-    rooms_val = int(r["rooms"]) if positive(r, "rooms") else 0
-    parking_val = int(r["parking"]) if positive(r, "parking") else 0
-    typ = r.get("type", "")
-    extras = r.get("extras", "")
-
-    # 1. 규모 및 시설 특성에 따른 화환 배치 환경 분석
-    scale_desc = []
-    if rooms_val >= 8:
-        scale_desc.append(f"{esc(name)}은(는) 총 {rooms_val}실의 빈소를 갖춘 {sgg} 지역의 주요 거점 장례시설입니다. 여러 유족의 조문이 동시에 진행되더라도 각 빈소 앞 복도 구획이 체계적으로 분리되어 있어, 보내주신 근조화환이 가려짐 없이 질서정연하게 도열 진열됩니다. 대형 3단이나 특대형 화환을 배치하기에 시각적으로 가장 웅장하고 품격 있는 환경을 제공합니다.")
-    elif rooms_val >= 4:
-        scale_desc.append(f"{esc(name)}은(는) {rooms_val}실 규모의 빈소를 효율적으로 운영하는 {sgg} 관내 대표 장례식장입니다. 일반적인 조문 규모에 가장 적합한 분향실 구조를 갖추고 있어, 3단 일반형부터 고급형 화환까지 입구 좌우에 균형감 있게 안착될 때 고인에 대한 추모의 정이 가장 정갈하게 돋보입니다.")
-    elif rooms_val > 0:
-        scale_desc.append(f"{esc(name)}은(는) {rooms_val}실 규모로 비교적 가족 중심의 차분하고 엄숙한 장례에 최적화된 시설입니다. 공간의 쾌적성을 유지하기 위해 전문 배송 기사가 현장에서 리본의 각도와 동선을 세심하게 조율하여, 단아하면서도 정성 어린 분위기를 연출합니다.")
-    else:
-        scale_desc.append(f"{esc(name)}은(는) {sgg} 지역에서 오랜 기간 고인을 추모해 온 소중한 공간입니다. 현장 공간 여건과 장례식장의 고유 지침을 준수하여 조문객의 통행을 방해하지 않는 최적의 위치에 화환을 세팅합니다.")
-
-    # 2. 운영 형태별 분석
-    if "대학" in name or "의료원" in name or "종합병원" in name or "병원" in typ:
-        scale_desc.append(f"병원 부속 장례식장의 특성상 내원 환자 및 일반 방문객과의 동선이 철저히 분리되어 있으며, 상례 전용 진입로와 하역 구역을 통해 배송이 안전하게 이루어집니다. 시설 자체의 엄격한 위생 및 방역 가이드라인을 준수하여 분향실 입구까지 정갈하게 운반합니다.")
-    elif "공설" in typ:
-        scale_desc.append(f"지자체 공설 장례시설로서 합리적이고 투명한 운영 절차를 자랑하며, 표준화된 화환 거치대를 완비하고 있어 모든 조화가 공정하고 단정하게 정렬 진열됩니다.")
-    else:
-        scale_desc.append(f"민간 전문 장례식장으로서 유족 맞춤형 서비스를 제공하며, 분향실 입구의 조명과 인테리어가 차분하여 백색 생화 화환이 한층 더 돋보이는 시각적 효과를 냅니다.")
-
-    # 3. 주차 및 조문 편의 분석
-    parking_desc = []
-    if parking_val >= 100:
-        parking_desc.append(f"약 {parking_val}대에 달하는 대형 전용 주차 공간이 확보되어 있어, 부고 소식을 듣고 먼 곳에서 자가용으로 방문하시는 조문객이나 단체 조문객들도 주차 걱정 없이 편리하게 조의를 표하실 수 있습니다.")
-    elif parking_val > 0:
-        parking_desc.append(f"약 {parking_val}대 주차가 가능하도록 조성되어 있으며, 직장인 조문객이 집중되는 퇴근 시간대(18시~20시)에는 인근 도로가 다소 혼잡할 수 있으니 대중교통 이용이나 사전 시간 조율을 권장해 드립니다.")
-    else:
-        parking_desc.append(f"시설 전용 주차장이 협소할 수 있으므로, 방문 전 인근 공영주차장이나 대중교통 노선을 미리 확인해 두시면 한결 여유로운 조문길이 됩니다.")
-
-    # 4. 부대시설 안내
-    extras_desc = []
-    if "식당" in extras or "매점" in extras:
-        extras_desc.append(f"시설 내부에 쾌적한 식당과 매점이 운영되고 있어 먼 길을 찾아오신 조문객들이 정성 어린 식사를 대접받고 상주와 담소를 나누기에 부족함이 없습니다.")
-    if "유족대기실" in extras:
-        extras_desc.append(f"상주와 유가족이 슬픔 속에서 심신을 추스를 수 있는 독립된 유족대기실이 완비되어 있어 3일간의 상례 일정을 건강하게 소화할 수 있도록 돕습니다.")
-    if "장애인" in extras:
-        extras_desc.append(f"휠체어 경사로 및 장애인 편의시설이 설치되어 있어 노약자나 거동이 불편하신 조문객들도 안전하고 편안하게 분향실까지 이동하실 수 있습니다.")
-
-    p1 = " ".join(scale_desc)
-    p2 = " ".join(parking_desc + extras_desc)
-    return (f"<h2>{esc(name)} 시설 환경 및 화환 진열 특성</h2>"
-            f"<p>{p1}</p>"
-            f"<p>{p2}</p>")
+    return ("<h2>화환 주문 안내</h2>"
+            "<p>주문 시 빈소 호수와 상주 성함을 정확히 확인하여 전달해 주세요. "
+            "화환의 반입 경로와 배치 위치는 시설 안내에 따라 확인해 주세요.</p>")
 
 def placement_section(name):
     txt = pick("placement_guide", name, "place") or (
@@ -483,14 +438,7 @@ def facility_page(r, siblings, cremation):
                 "name": f"{name} {KW} 배송 - {C['brand']}",
                 "url": canon,
                 "telephone": C["phone"],
-                "priceRange": f"{C['products'][0]['price']} ~ {C['products'][-1]['price']}",
-                "address": {
-                    "@type": "PostalAddress",
-                    "streetAddress": r.get("address", ""),
-                    "addressLocality": sgg,
-                    "addressRegion": sido,
-                    "addressCountry": "KR"
-                }
+                "priceRange": f"{C['products'][0]['price']} ~ {C['products'][-1]['price']}"
             },
             {
                 "@type": "BreadcrumbList",
