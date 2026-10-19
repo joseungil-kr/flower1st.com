@@ -149,6 +149,20 @@ def shell(title, desc, canon, body, extra_head=""):
 <footer>{esc(C['brand'])} · 접수 {esc(C['phone'])}<br>매일 {esc(C['order_deadline'])}까지 접수 시 {esc(C['delivery_window'])} 배송</footer>
 </div></body></html>"""
 
+def not_found_page():
+    return f"""<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,follow">
+<title>요청하신 페이지를 찾을 수 없습니다 | {esc(C['brand'])}</title>
+<meta name="theme-color" content="{esc(C['accent'])}">
+<link rel="stylesheet" href="/assets/style.css">
+</head><body><main class="w">
+<h1>페이지를 찾을 수 없습니다</h1>
+<p>요청하신 주소의 페이지가 없거나 이동되었습니다.</p>
+<p><a href="/">홈으로 돌아가기</a></p>
+</main></body></html>"""
+
 def cta():
     tel = C['phone'].replace('-', '')
     shop = C.get('shop_url')
@@ -461,11 +475,12 @@ def facility_page(r, siblings, cremation):
     return slug, shell(title, desc, canon, body, extra_head=extra_head)
 
 # ---------------- 허브 ----------------
-def sigungu_page(sido, sgg, rows, other_sgg, cremation):
+def sigungu_page(sido, sgg, rows, other_sgg, cremation, *, include_sido=False):
     slug = sgg_slug(sido, sgg)
     canon = f"https://{C['domain']}/{enc(slug)}/"
     disp = sgg_display(sido, sgg)
-    title = f"{disp} {FN} {KW} 주문 · {ALT[0] if ALT else KW} 당일 배송 | {C['brand']}"
+    title_disp = f"{sido} {disp}" if include_sido else disp
+    title = f"{title_disp} {FN} {KW} 주문 · {ALT[0] if ALT else KW} 당일 배송 | {C['brand']}"
     desc = f"{sido} {disp} 관내 {FN} {len(rows)}곳에 {ALT[0] if ALT else KW}을 3시간 이내에 당일 특급 배송합니다. 59,000원부터 정찰제, 현장 안착 사진 안심 문자 전송."
     lst = "".join(f"<li><a href='/{enc(r['name']+KW)}/'>{esc(r['name'])} {esc(KW)}</a></li>" for r in rows)
     oth = "".join(f"<li><a href='/{enc(sgg_slug(sido, s))}/'>{esc(sgg_display(sido, s))} {esc(FN)}</a></li>" for s in other_sgg)
@@ -530,7 +545,7 @@ def sigungu_page(sido, sgg, rows, other_sgg, cremation):
 
     body = f"""
 <nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › {esc(disp)}</nav>
-<h1>{esc(disp)} {esc(FN)} {esc(KW)}</h1>
+<h1>{esc(title_disp)} {esc(FN)} {esc(KW)}</h1>
 <p class="lede">{esc(disp)} 관내 {esc(FN)} {len(rows)}곳에 {esc(KW)}을 당일 3시간 이내에 배송합니다. {esc(C['products'][0]['price'])}부터 정찰제, 현장 사진 전송.</p>
 {cta()}
 <h2>{esc(disp)}의 {esc(FN)} 목록</h2><ul class="k">{lst}</ul>
@@ -761,11 +776,16 @@ def main():
     for sd, m in tree.items():
         for sg in m:
             sgg_sido.setdefault(sg, set()).add(sd)
+    ambiguous_sgg_titles = {
+        sg: len(sidos) > 1 and len({sgg_display(sd, sg) for sd in sidos}) == 1
+        for sg, sidos in sgg_sido.items()
+    }
     for sd, m in tree.items():
         for sg in m:
             SGG_SLUG[(sd, sg)] = (sd + sg + FN) if len(sgg_sido[sg]) > 1 else (sg + FN)
 
     write(os.path.join(OUT, "index.html"), home(tree, total, cremation))
+    write(os.path.join(OUT, "404.html"), not_found_page())
     urls.append(("", "1.0", "daily"))
 
     sidos = list(tree)
@@ -778,7 +798,10 @@ def main():
         for sg in sggs:
             rs = m[sg]
             if sg != sd:  # 세종처럼 시군구=시도 자신이면 시도 허브와 슬러그가 겹쳐 별도 페이지 생략
-                slug, page = sigungu_page(sd, sg, rs, [x for x in sggs if x != sg][:12], cremation)
+                slug, page = sigungu_page(
+                    sd, sg, rs, [x for x in sggs if x != sg][:12], cremation,
+                    include_sido=ambiguous_sgg_titles[sg],
+                )
                 write(os.path.join(OUT, slug, "index.html"), page); urls.append((slug, "0.8", "weekly"))
             pick = rs if st == 0 else rs[:max(1, int(len(rs) * (0.3 if st == 1 else 0.7)))]
             for r in pick:
