@@ -49,6 +49,8 @@ def load_sitemap_urls(path):
     return [loc.text for loc in tree.getroot().findall(".//s:loc", ns)]
 
 
+csv.field_size_limit(2147483647)
+
 def already_sent():
     if not os.path.isfile(LOG):
         return set()

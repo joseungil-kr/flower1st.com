@@ -69,6 +69,20 @@ for _c in CELEB_CITIES:
     SIDO_CELEB.setdefault(_c["sido"], []).append(_c)
     CITY_CELEB[(_c["sido"], _c["city"])] = _c
 
+FEES_PATH = os.path.join(ROOT, "delivery_fees.json")
+FEES_DATA = json.load(open(FEES_PATH, encoding="utf-8")) if os.path.isfile(FEES_PATH) else []
+SGG_FEES = {}
+FAC_FEE_MAP = {}
+for _f in FEES_DATA:
+    SGG_FEES.setdefault((_f["sido"], _f["sigungu"]), []).append(_f)
+
+def get_fee_slug(entry):
+    sgg = entry["sigungu"]
+    emd = entry.get("emd", "")
+    if emd:
+        return f"{sgg} {emd} 근조화환 배송비"
+    return f"{sgg} 근조화환 배송비"
+
 def get_matching_celeb(sido, sgg):
     if (sido, sgg) in CITY_CELEB:
         return CITY_CELEB[(sido, sgg)]
@@ -399,6 +413,16 @@ def facility_page(r, siblings, cremation):
         celeb_facility_note = (f"<div class='note'><b>{esc(match_celeb['city'])} 개업식·이전 축하화환이 필요하신가요?</b>"
                                f"<p>{esc(match_celeb['city'])} 전지역 당일 3시간 특급 배송, 축하 3단 화환 59,000원부터. "
                                f"<a href='/{enc(match_celeb['slug'])}/'>{esc(match_celeb['city'])} 축하화환 주문 안내 보기 →</a></p></div>")
+
+    # 지역 추가배송비 안내 배너
+    fee_entry = FAC_FEE_MAP.get(name)
+    fee_facility_note = ""
+    if fee_entry:
+        f_disp = f"{fee_entry['sigungu']} {fee_entry['emd']}" if fee_entry.get("emd") else fee_entry["sigungu"]
+        f_slug = get_fee_slug(fee_entry)
+        fee_facility_note = (f"<div class='note'><b>{esc(name)} 배송비 안내 ({esc(f_disp)})</b>"
+                             f"<p>{esc(name)}은(는) 관내 외곽·원거리 지역으로 분류되어 <b>{esc(fee_entry['fee'])}</b>의 거리 추가배송비가 적용됩니다. "
+                             f"<a href='/{enc(f_slug)}/'>{esc(f_disp)} 근조화환 배송비 상세 안내 보기 →</a></p></div>")
     body = f"""
 <nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › <a href="/{enc(sgg_url)}/">{esc(disp)}</a> › {esc(name)}</nav>
 <h1>{esc(name)} {esc(KW)}</h1>
@@ -424,6 +448,7 @@ def facility_page(r, siblings, cremation):
 {faqs(r)}
 {bugo_note()}
 {cremation_note(sido, cremation)}
+{fee_facility_note}
 {celeb_facility_note}
 <h2>{esc(disp)}의 다른 {esc(FN)}</h2>
 <ul class="k">{sib}</ul>
@@ -543,6 +568,15 @@ def sigungu_page(sido, sgg, rows, other_sgg, cremation, *, include_sido=False):
     schema_json = json.dumps(sgg_schema, ensure_ascii=False)
     extra_head = f'<script type="application/ld+json">{schema_json}</script>'
 
+    # 지역 추가배송비 안내 섹션
+    sgg_fee_list = SGG_FEES.get((sido, sgg), [])
+    fee_sgg_block = ""
+    if sgg_fee_list:
+        fee_lis = "".join(f"<li><a href='/{enc(get_fee_slug(x))}/'><b>{esc(x['emd'] if x.get('emd') else x['sigungu'])}</b> (추가배송비 {esc(x['fee'])})</a></li>" for x in sgg_fee_list)
+        fee_sgg_block = (f"<h2>{esc(disp)} 지역별 거리 추가배송비 안내</h2>"
+                         f"<p class='lede'>{esc(disp)} 관내 도서·산간 및 원거리 읍·면·동 지역은 공식 추가배송비가 적용됩니다.</p>"
+                         f"<ul class='k'>{fee_lis}</ul>")
+
     body = f"""
 <nav class="bc"><a href="/">홈</a> › <a href="/{enc(sido+FN)}/">{esc(sido)}</a> › {esc(disp)}</nav>
 <h1>{esc(title_disp)} {esc(FN)} {esc(KW)}</h1>
@@ -550,6 +584,7 @@ def sigungu_page(sido, sgg, rows, other_sgg, cremation, *, include_sido=False):
 {cta()}
 <h2>{esc(disp)}의 {esc(FN)} 목록</h2><ul class="k">{lst}</ul>
 {products()}
+{fee_sgg_block}
 <h2>{esc(disp)} 관내 직배송 시스템 및 배송 안내</h2>
 <p>{esc(sido)} {esc(disp)} 전지역은 당일 입고된 싱싱한 특상급 국화만을 사용하여 현지 전문 플로리스트가 정성을 다해 제작합니다. 주문 접수 즉시 3시간 이내 빠른 안착을 보장하며, 복도 동선과 빈소 여건에 맞춰 조문객의 통행을 방해하지 않는 최적의 위치에 단정하게 배치합니다.</p>
 {process(disp)}
@@ -637,6 +672,15 @@ def sido_page(sido, sgg_map, total, other_sido, cremation):
     schema_json = json.dumps(sido_schema, ensure_ascii=False)
     extra_head = f'<script type="application/ld+json">{schema_json}</script>'
 
+    # 도 전체 기준 추가배송비 안내 (시군구 허브가 없는 계룡시 등 도달 보장)
+    sido_fee_list = [f for f in FEES_DATA if f["sido"] == sido]
+    sido_fee_block = ""
+    if sido_fee_list:
+        sido_fee_lis = "".join(f"<li><a href='/{enc(get_fee_slug(x))}/'><b>{esc(x['sigungu'])} {esc(x['emd'] if x.get('emd') else '')}</b> (배송비 {esc(x['fee'])})</a></li>" for x in sido_fee_list[:18])
+        sido_fee_block = (f"<h2>{esc(sido)} 지역별 거리 추가배송비 안내</h2>"
+                          f"<p class='lede'>{esc(sido)} 관내 도서·산간 및 외곽 지역 장례식장 화환 배송 시 공식 추가배송비 안내</p>"
+                          f"<ul class='k'>{sido_fee_lis}</ul>")
+
     body = f"""
 <nav class="bc"><a href="/">홈</a> › {esc(sido)}</nav>
 <h1>{esc(sido)} {esc(FN)} {esc(KW)}</h1>
@@ -644,6 +688,7 @@ def sido_page(sido, sgg_map, total, other_sido, cremation):
 {cta()}
 <h2>{sub_heading}</h2><ul class="k">{lst}</ul>
 {products()}
+{sido_fee_block}
 <h2>{esc(sido)} 전지역 신속 배송 네트워크</h2>
 <p>{esc(sido)} 관내 각 시·군·구에 위치한 직영 제휴 화원을 통해 배송지 인근에서 즉시 제작하므로, 장거리 이동 중 꽃이 시들거나 훼손되는 일 없이 최상의 신선도를 유지한 상태로 빈소에 안착됩니다. 현장 안착 사진 안심 문자 서비스를 통해 조문 현장에 직접 가시지 못하는 분들도 안심하고 이용하실 수 있습니다.</p>
 {process(sido)}
@@ -741,6 +786,7 @@ def home(tree, total, cremation):
     lst = "".join(f"<li><a href='/{enc(sd+FN)}/'>{esc(sd)} <span style='color:#888'>"
                   f"{sum(len(v) for v in m.values())}</span></a></li>" for sd, m in tree.items())
     celeb_links = "".join(f"<li><a href='/{enc(c['slug'])}/'>{esc(c['city'])} 축하화환</a></li>" for c in CELEB_CITIES)
+    fee_top_links = "".join(f"<li><a href='/{enc(get_fee_slug(f))}/'>{esc(f['sigungu'])} {esc(f['emd'] if f.get('emd') else '')} ({esc(f['fee'])})</a></li>" for f in FEES_DATA[:30])
     body = f"""
 <h1>전국 {esc(FN)} {esc(KW)}</h1>
 <p class="lede">{esc(C['hero_line'])}</p>
@@ -755,6 +801,11 @@ def home(tree, total, cremation):
 <ul class="k">
 {celeb_links}
 </ul>
+<h2>지역별 근조화환 추가배송비 안내</h2>
+<p class="lede">전국 192개 도서·산간 및 원거리 읍·면·동 지역 장례식장 화환 배송비 정찰제 안내</p>
+<ul class="k">
+{fee_top_links}
+</ul>
 """
     return shell(title, desc, canon, body, extra_head=site_verification_tags())
 
@@ -768,6 +819,20 @@ def main():
     st = ap.parse_args().stage
     tree, rows = load()
     cremation = load_crematorium()
+
+    # 시설명 -> 추가배송비 매핑 구성
+    for e in FEES_DATA:
+        for f in rows:
+            if f['sido'] == e['sido'] or (e['sido'] == '전라남도' and f['sido'] in ['전라남도', '광주광역시']):
+                sgg_clean = e['sigungu'].split()[0]
+                if sgg_clean in f['sigungu'] or e['sigungu'] in f['sigungu']:
+                    if e.get('emd'):
+                        if e['emd'] in f['address'] or e['emd'] in f['name']:
+                            FAC_FEE_MAP[f['name']] = e
+                    else:
+                        if f['name'] not in FAC_FEE_MAP:
+                            FAC_FEE_MAP[f['name']] = e
+
     if os.path.isdir(OUT): shutil.rmtree(OUT)
     urls = []
     total = len(rows)
@@ -827,6 +892,19 @@ def main():
         except Exception as e:
             print(f"축하화환 빌드 중 경고: {e}")
 
+    # 지역별 추가배송비 안내 페이지 빌드
+    fee_count = 0
+    if os.path.isfile(FEES_PATH):
+        try:
+            import build_delivery_fees
+            for entry in build_delivery_fees.FEES:
+                f_slug, f_html = build_delivery_fees.build_fee_page(entry)
+                write(os.path.join(OUT, f_slug, "index.html"), f_html)
+                urls.append((f_slug, "0.8", "weekly"))
+                fee_count += 1
+        except Exception as e:
+            print(f"추가배송비 페이지 빌드 중 경고: {e}")
+
     assets_dir = os.path.join(ROOT, "assets")
     if os.path.isdir(assets_dir):
         shutil.copytree(assets_dir, os.path.join(OUT, "assets"))
@@ -844,7 +922,7 @@ def main():
     if key:
         write(os.path.join(OUT, f"{key}.txt"), key)  # 재빌드해도 안 사라지게 config 값으로 매번 재생성
 
-    print(f"시설 {total}곳 + 화장시설 {len(cremation)}개 시도 + 축하화환 {celeb_count}개 시 → {len(urls)}개 URL 생성  ({OUT})")
+    print(f"시설 {total}곳 + 화장시설 {len(cremation)}개 시도 + 축하화환 {celeb_count}개 시 + 추가배송비 {fee_count}개 지역 → {len(urls)}개 URL 생성  ({OUT})")
 
 if __name__ == "__main__":
     main()
