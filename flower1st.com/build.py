@@ -133,7 +133,7 @@ def favicon_tags():
             '<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">')
 
 def site_verification_tags():
-    tags = []
+    tags = ['<meta name="google-adsense-account" content="ca-pub-4296739080031121">']
     if C.get("naver_site_verification"):
         tags.append(f'<meta name="naver-site-verification" content="{esc(C["naver_site_verification"])}">')
     if C.get("google_site_verification"):
